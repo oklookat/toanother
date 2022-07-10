@@ -36,10 +36,7 @@ func (c *Config) Init() (err error) {
 
 // write config struct to file.
 func (c *Config) WriteToFile() (err error) {
-	if err = datadir.WriteFileStruct(CONFIG_NAME, true, c); err != nil {
-		return
-	}
-	return
+	return datadir.WriteFileStruct(CONFIG_NAME, true, c)
 }
 
 type YandexMusicSettings struct {
@@ -49,7 +46,10 @@ type YandexMusicSettings struct {
 // write to config file.
 func (c *YandexMusicSettings) Apply() (err error) {
 	ConfigFile.YandexMusic = *c
-	return ConfigFile.WriteToFile()
+	if err = ConfigFile.WriteToFile(); err != nil {
+		return
+	}
+	return
 }
 
 type SpotifySettings struct {

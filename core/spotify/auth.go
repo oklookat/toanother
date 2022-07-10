@@ -97,6 +97,7 @@ func (i *Instance) WriteToken(token *oauth2.Token) (err error) {
 
 func (i *Instance) Ping() (err error) {
 	if i.client == nil || i.token == nil {
+		err = errors.New("spotify: not authorized")
 		return
 	}
 	usr, err := i.client.CurrentUser(context.Background())

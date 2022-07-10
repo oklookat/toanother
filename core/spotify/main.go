@@ -22,8 +22,6 @@ const (
 	serverURI  = "http://localhost:8080" + spotifyURI
 )
 
-var Settings *base.SpotifySettings
-
 type Hooks struct {
 	// open URL in args to auth.
 	OnAuthURL func(url string)
@@ -43,13 +41,26 @@ type Instance struct {
 }
 
 func New(h *Hooks, bh *base.Hooks) (inst *Instance, err error) {
-	Settings = &base.ConfigFile.Spotify
 	inst = &Instance{}
 	inst.hooks = h
 	inst.baseHooks = bh
-	inst.authenticator = spotifyauth.New(
-		spotifyauth.WithClientID(Settings.ID),
-		spotifyauth.WithClientSecret(Settings.Secret),
+	inst.InitAuthenticator()
+	inst.state = "abc123"
+	if err = inst.readToken(); err != nil {
+		return
+	}
+	if inst.token != nil {
+		if err = inst.authByToken(context.Background()); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (i *Instance) InitAuthenticator() {
+	i.authenticator = spotifyauth.New(
+		spotifyauth.WithClientID(base.ConfigFile.Spotify.ID),
+		spotifyauth.WithClientSecret(base.ConfigFile.Spotify.Secret),
 		spotifyauth.WithRedirectURL(serverURI),
 		spotifyauth.WithScopes(
 			spotifyauth.ScopeUserLibraryRead,
@@ -61,16 +72,6 @@ func New(h *Hooks, bh *base.Hooks) (inst *Instance, err error) {
 			spotifyauth.ScopeUserReadPrivate,
 		),
 	)
-	inst.state = "abc123"
-	if err = inst.readToken(); err != nil {
-		return
-	}
-	if inst.token != nil {
-		if err = inst.authByToken(context.Background()); err != nil {
-			return
-		}
-	}
-	return
 }
 
 func (i *Instance) ImportLikedTracks(tracks []*base.Track) (err error) {

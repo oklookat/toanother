@@ -111,7 +111,7 @@ func (p *Playlist) Download(playlistID string) (playlist *base.Playlist, err err
 
 	// send request.
 	_, err = client.R().
-		SetQueryParam("owner", Settings.Login).SetQueryParam("kinds", playlistID).
+		SetQueryParam("owner", base.ConfigFile.YandexMusic.Login).SetQueryParam("kinds", playlistID).
 		SetResult(playlistResponse).
 		EnableDump().
 		Get(PLAYLIST_HANDLER)

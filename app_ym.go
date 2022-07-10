@@ -115,7 +115,7 @@ func (y *YandexMusicApp) DownloadAlbums() (albums []*base.Album, err error) {
 }
 
 func (y *YandexMusicApp) GetSettings() *base.YandexMusicSettings {
-	return ym.Settings
+	return &base.ConfigFile.YandexMusic
 }
 
 func (y *YandexMusicApp) ApplySettings(settings *base.YandexMusicSettings) (err error) {

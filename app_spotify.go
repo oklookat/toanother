@@ -38,7 +38,7 @@ func (s *SpotifyApp) onFinish() {
 }
 
 func (s *SpotifyApp) GetSettings() *base.SpotifySettings {
-	return spotify.Settings
+	return &base.ConfigFile.Spotify
 }
 
 func (s *SpotifyApp) ApplySettings(settings *base.SpotifySettings) (err error) {
@@ -48,6 +48,8 @@ func (s *SpotifyApp) ApplySettings(settings *base.SpotifySettings) (err error) {
 	}
 	if err = settings.Apply(); err != nil {
 		logger.Log.Error(err.Error())
+	} else {
+		s.Client.InitAuthenticator()
 	}
 	return err
 }

@@ -34,11 +34,9 @@ const (
 	REFERER_ALBUMS  = "albums"
 )
 
-var Settings *base.YandexMusicSettings
 var dbConn *sql.DB
 
 func Init() (err error) {
-	Settings = &base.ConfigFile.YandexMusic
 	dbConn, err = database.Load(DB_NAME, func(db *sql.DB) error {
 		dbConn = db
 		return base.RecreateAll(dbConn)
@@ -50,7 +48,7 @@ func Init() (err error) {
 }
 
 func createRequestor(referer string) *req.Client {
-	referer = fmt.Sprintf("https://music.yandex.ru/users/%v/"+referer, Settings.Login)
+	referer = fmt.Sprintf("https://music.yandex.ru/users/%v/"+referer, base.ConfigFile.YandexMusic.Login)
 	var client = req.C().
 		SetUserAgent(USER_AGENT).
 		SetTimeout(15 * time.Second).
@@ -90,7 +88,7 @@ func createRequestor(referer string) *req.Client {
 		"external-domain": "music.yandex.ru",
 		"overembed":       "false",
 		"lang":            "ru",
-		"owner":           Settings.Login,
+		"owner":           base.ConfigFile.YandexMusic.Login,
 		"likeFilter":      "favorite",
 	})
 

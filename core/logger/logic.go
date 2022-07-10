@@ -41,6 +41,7 @@ func New(level int, writeToConsole bool) (*Logger, error) {
 	if err != nil {
 		return nil, err
 	}
+	var openFlag = 0
 	if exists {
 		file, err := datadir.OpenFile(LOG_NAME, os.O_RDONLY)
 		if err != nil {
@@ -52,16 +53,17 @@ func New(level int, writeToConsole bool) (*Logger, error) {
 			return nil, err
 		}
 		isOversize = stat != nil && stat.Size() > 1000000
+		if isOversize {
+			openFlag = os.O_RDWR
+		} else {
+			openFlag = os.O_APPEND
+		}
+	} else {
+		openFlag = os.O_RDWR | os.O_CREATE
 	}
 
 	// open file.
 	var file *os.File
-	var openFlag = 0
-	if isOversize {
-		openFlag = os.O_RDWR
-	} else {
-		openFlag = os.O_APPEND
-	}
 	file, err = datadir.OpenFile(LOG_NAME, openFlag)
 	if err != nil {
 		return nil, err

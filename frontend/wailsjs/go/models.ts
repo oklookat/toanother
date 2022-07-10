@@ -1,5 +1,39 @@
 export namespace base {
 	
+	export class YandexMusicSettings {
+	    login: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new YandexMusicSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.login = source["login"];
+	    }
+	}
+	export class Album {
+	    id: number;
+	    title: string;
+	    artist: string[];
+	    releaseDate: number;
+	    trackCount: number;
+	    year: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Album(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.artist = source["artist"];
+	        this.releaseDate = source["releaseDate"];
+	        this.trackCount = source["trackCount"];
+	        this.year = source["year"];
+	    }
+	}
 	export class Artist {
 	    id: number;
 	    name: string;
@@ -66,40 +100,6 @@ export namespace base {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.secret = source["secret"];
-	    }
-	}
-	export class YandexMusicSettings {
-	    login: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new YandexMusicSettings(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.login = source["login"];
-	    }
-	}
-	export class Album {
-	    id: number;
-	    title: string;
-	    artist: string[];
-	    releaseDate: number;
-	    trackCount: number;
-	    year: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new Album(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.title = source["title"];
-	        this.artist = source["artist"];
-	        this.releaseDate = source["releaseDate"];
-	        this.trackCount = source["trackCount"];
-	        this.year = source["year"];
 	    }
 	}
 
