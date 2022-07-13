@@ -7,27 +7,26 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-// ID finding methods.
-type idFinder[T comparable] interface {
-	// find ID.
-	Find(val T) (found bool, id spotify.ID, err error)
-
-	// (base.Hooks).
-	OnImport(current int, total int, notFound []any)
-
-	// when ID's found.
-	OnFound(ids [][]spotify.ID) (err error)
+type idFinderAllowed interface {
+	*base.Track | *base.Artist | *base.Album
 }
 
-type findIdsArgs[T comparable] struct {
+// ID finding methods.
+type idFinder[T idFinderAllowed] interface {
+	Find(val T) (found bool, id spotify.ID, err error)
+
+	OnFinish(ids [][]spotify.ID) (err error)
+}
+
+type findIdsArgs[T idFinderAllowed] struct {
 	instance *Instance
 	vals     []T
 	finder   idFinder[T]
-	hooks    *base.Hooks
+	hooks    *base.Hooks[T]
 }
 
-// Find Spotify ID's.
-func findIds[T comparable](args *findIdsArgs[T]) (err error) {
+// Find Spotify ID's by args.
+func findIds[T idFinderAllowed](args *findIdsArgs[T]) (err error) {
 	if args == nil {
 		err = errors.New("nil args")
 		return
@@ -52,20 +51,21 @@ func findIds[T comparable](args *findIdsArgs[T]) (err error) {
 	ids = append(ids, make([]spotify.ID, 0))
 	var delimIndex = 0
 	//
-	var notFound = 0
-	var notFounds = make([]any, 0)
 	var total = len(args.vals)
 
 	for counter, val := range args.vals {
-		args.finder.OnImport(counter, total, notFounds)
+		if args.hooks != nil && args.hooks.OnProcessing != nil {
+			args.hooks.OnProcessing(counter, total)
+		}
 		found, foundID, errd := args.finder.Find(val)
 		if errd != nil {
 			err = errd
 			return
 		}
 		if !found {
-			notFounds = append(notFounds, val)
-			notFound++
+			if args.hooks != nil && args.hooks.OnNotFound != nil {
+				args.hooks.OnNotFound(val)
+			}
 			continue
 		}
 		// limit: 50 id's per API call.
@@ -76,5 +76,5 @@ func findIds[T comparable](args *findIdsArgs[T]) (err error) {
 		ids[delimIndex] = append(ids[delimIndex], foundID)
 	}
 
-	return args.finder.OnFound(ids)
+	return args.finder.OnFinish(ids)
 }

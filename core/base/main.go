@@ -2,13 +2,15 @@ package base
 
 import (
 	"database/sql"
+	"fmt"
 	"regexp"
 )
 
 var (
-	// not-searchable symbols.
+	// Non-searchable symbols.
 	REGEXP_SYMBOLS = regexp.MustCompile("[.]+")
-	// brackets ( and values inside ).
+
+	// Brackets (), and values inside.
 	REGEXP_BRACKETS = regexp.MustCompile(`(?s)\((.*)\)`)
 )
 
@@ -51,26 +53,35 @@ const (
 	`
 )
 
-type Hooks struct {
-	// when API request.
-	OnFetchFromAPI func(current int, total int)
-	// when DB request.
-	OnFetchFromDatabase func(current int, total int)
-	// when adding to DB.
-	OnAddingToDatabase func(current int, total int)
-	// on importing tracks in service.
-	OnImport func(current int, total int, notFound []interface{})
+type Hooks[T comparable] struct {
+	OnProcessing func(current int, total int)
+	// on something not found.
+	OnNotFound func(item T)
 }
 
-type NotFounder interface {
-	NotFoundMsg() string
-}
-
-// drop all tables, and create.
+// Recreate all tables.
 func RecreateAll(conn *sql.DB) (err error) {
 	if _, err = conn.Exec(SQL_PLAYLIST_DROP); err != nil {
 		return err
 	}
 	_, err = conn.Exec(SQL_PLAYLIST)
+	return
+}
+
+// Convert artist & title to searchable string.
+func toSearchable(artist []string, title string) (searchable string) {
+	if artist == nil || len(artist) < 1 {
+		return
+	}
+
+	// modify artist.
+	var artistStr = artist[0]
+	artistStr = REGEXP_SYMBOLS.ReplaceAllString(artistStr, "")
+
+	// modify title.
+	title = REGEXP_BRACKETS.ReplaceAllString(title, "")
+	title = REGEXP_SYMBOLS.ReplaceAllString(title, "")
+
+	searchable = fmt.Sprintf("%v %v", artistStr, title)
 	return
 }

@@ -1,17 +1,5 @@
 export namespace base {
 	
-	export class YandexMusicSettings {
-	    login: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new YandexMusicSettings(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.login = source["login"];
-	    }
-	}
 	export class Album {
 	    id: number;
 	    title: string;
@@ -100,6 +88,18 @@ export namespace base {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.secret = source["secret"];
+	    }
+	}
+	export class YandexMusicSettings {
+	    login: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new YandexMusicSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.login = source["login"];
 	    }
 	}
 

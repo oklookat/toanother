@@ -32,11 +32,12 @@ func (a *artist) Find(artist *base.Artist) (found bool, id spotify.ID, err error
 	for i := range result.Artists.Artists {
 		found = true
 		id = result.Artists.Artists[i].ID
+		break
 	}
 	return
 }
 
-func (a *artist) OnFound(ids [][]spotify.ID) (err error) {
+func (a *artist) OnFinish(ids [][]spotify.ID) (err error) {
 	if a.instance == nil {
 		err = errors.New("nil instance")
 		return
@@ -48,11 +49,4 @@ func (a *artist) OnFound(ids [][]spotify.ID) (err error) {
 		}
 	}
 	return
-}
-
-func (a *artist) OnImport(current int, total int, notFound []any) {
-	if a.instance.baseHooks == nil || a.instance.baseHooks.OnImport == nil {
-		return
-	}
-	a.instance.baseHooks.OnImport(current, total, notFound)
 }

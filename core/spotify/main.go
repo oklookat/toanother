@@ -28,8 +28,7 @@ type Hooks struct {
 }
 
 type Instance struct {
-	hooks     *Hooks
-	baseHooks *base.Hooks
+	hooks *Hooks
 	// auth.
 	isWebAuthCalledBefore bool
 	state                 string
@@ -40,10 +39,9 @@ type Instance struct {
 	user   *spotify.PrivateUser
 }
 
-func New(h *Hooks, bh *base.Hooks) (inst *Instance, err error) {
+func New(h *Hooks) (inst *Instance, err error) {
 	inst = &Instance{}
 	inst.hooks = h
-	inst.baseHooks = bh
 	inst.InitAuthenticator()
 	inst.state = "abc123"
 	if err = inst.readToken(); err != nil {
@@ -74,7 +72,7 @@ func (i *Instance) InitAuthenticator() {
 	)
 }
 
-func (i *Instance) ImportLikedTracks(tracks []*base.Track) (err error) {
+func (i *Instance) ImportLikedTracks(tracks []*base.Track, hooks *base.Hooks[*base.Track]) (err error) {
 	var tr = &track{
 		instance: i,
 	}
@@ -82,12 +80,12 @@ func (i *Instance) ImportLikedTracks(tracks []*base.Track) (err error) {
 		instance: i,
 		vals:     tracks,
 		finder:   tr,
-		hooks:    i.baseHooks,
+		hooks:    hooks,
 	}
 	return findIds(args)
 }
 
-func (i *Instance) ImportLikedArtists(artists []*base.Artist) (err error) {
+func (i *Instance) ImportLikedArtists(artists []*base.Artist, hooks *base.Hooks[*base.Artist]) (err error) {
 	var ar = &artist{
 		instance: i,
 	}
@@ -95,7 +93,7 @@ func (i *Instance) ImportLikedArtists(artists []*base.Artist) (err error) {
 		instance: i,
 		vals:     artists,
 		finder:   ar,
-		hooks:    i.baseHooks,
+		hooks:    hooks,
 	}
 	return findIds(args)
 }

@@ -12,7 +12,6 @@ import (
 
 type YandexMusicApp struct {
 	ctx      context.Context
-	hooks    *base.Hooks
 	playlist ym.Playlist
 	artist   ym.Artist
 	album    ym.Album
@@ -23,25 +22,35 @@ func (y *YandexMusicApp) startup(ctx context.Context) (err error) {
 		return
 	}
 	y.ctx = ctx
-	y.hooks = &base.Hooks{
-		OnFetchFromAPI: func(current, total int) {
-			runtime.EventsEmit(y.ctx, "OnFetch", current, total)
+	y.playlist.Hooks = &base.Hooks[*base.Playlist]{
+		OnProcessing: func(current, total int) {
+			runtime.EventsEmit(y.ctx, EVENT_PROCESSING, current, total)
 		},
-		OnFetchFromDatabase: func(current, total int) {
-			runtime.EventsEmit(y.ctx, "OnFetchFromDatabase", current, total)
-		},
-		OnAddingToDatabase: func(current, total int) {
-			runtime.EventsEmit(y.ctx, "OnAddingToDatabase", current, total)
+		OnNotFound: func(item *base.Playlist) {
+			runtime.EventsEmit(y.ctx, EVENT_NOT_FOUND, item)
 		},
 	}
-	y.playlist.Hooks = y.hooks
-	y.artist.Hooks = y.hooks
-	y.album.Hooks = y.hooks
+	y.artist.Hooks = &base.Hooks[*base.Artist]{
+		OnProcessing: func(current, total int) {
+			runtime.EventsEmit(y.ctx, EVENT_PROCESSING, current, total)
+		},
+		OnNotFound: func(item *base.Artist) {
+			runtime.EventsEmit(y.ctx, EVENT_NOT_FOUND, item)
+		},
+	}
+	y.album.Hooks = &base.Hooks[*base.Album]{
+		OnProcessing: func(current, total int) {
+			runtime.EventsEmit(y.ctx, EVENT_PROCESSING, current, total)
+		},
+		OnNotFound: func(item *base.Album) {
+			runtime.EventsEmit(y.ctx, EVENT_NOT_FOUND, item)
+		},
+	}
 	return
 }
 
 func (y *YandexMusicApp) onFinish() {
-	runtime.EventsEmit(y.ctx, "OnFinish")
+	runtime.EventsEmit(y.ctx, EVENT_FINISH)
 }
 
 //from database.

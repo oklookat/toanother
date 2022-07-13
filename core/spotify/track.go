@@ -22,9 +22,9 @@ func (t *track) Find(track *base.Track) (found bool, id spotify.ID, err error) {
 		err = errors.New("nil track")
 		return
 	}
-	result, errd := t.instance.client.Search(context.Background(),
+	result, err := t.instance.client.Search(context.Background(),
 		track.ToSearchable(), spotify.SearchTypeTrack)
-	if errd != nil {
+	if err != nil {
 		return
 	}
 	if result == nil || result.Tracks == nil || result.Tracks.Tracks == nil || result.Tracks.Total < 1 {
@@ -45,11 +45,12 @@ func (t *track) Find(track *base.Track) (found bool, id spotify.ID, err error) {
 	return
 }
 
-func (t *track) OnFound(ids [][]spotify.ID) (err error) {
+func (t *track) OnFinish(ids [][]spotify.ID) (err error) {
 	if t.instance == nil {
 		err = errors.New("nil instance")
 		return
 	}
+	// TODO: uncomment
 	// for counter := range ids {
 	// 	err = t.instance.client.AddTracksToLibrary(context.Background(), ids[counter]...)
 	// 	if err != nil {
@@ -57,11 +58,4 @@ func (t *track) OnFound(ids [][]spotify.ID) (err error) {
 	// 	}
 	// }
 	return
-}
-
-func (t *track) OnImport(current int, total int, notFound []any) {
-	if t.instance.baseHooks == nil || t.instance.baseHooks.OnImport == nil {
-		return
-	}
-	t.instance.baseHooks.OnImport(current, total, notFound)
 }

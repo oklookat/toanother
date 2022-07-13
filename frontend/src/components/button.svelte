@@ -15,6 +15,7 @@
         user-select: none;
         min-height: 32px;
         min-width: 18px;
+        width: max-content;
         cursor: pointer;
         background-color: var(--color-level-1);
         border: 1px solid var(--color-border);

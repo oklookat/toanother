@@ -34,7 +34,7 @@ export default class Spotify {
     public static async webAuth(): Promise<void> {
         try {
             await WebAuth()
-            await MessageInfo("Готово.");
+            await MessageInfo("Вход выполнен.");
         } catch (err) {
             await this.onError(err)
         }
@@ -43,7 +43,7 @@ export default class Spotify {
     public static async ping(): Promise<void> {
         try {
             await Ping()
-            await MessageInfo("Готово.");
+            await MessageInfo("Всё нормально.");
         } catch (err) {
             await this.onError(err)
         }

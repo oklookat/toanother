@@ -7,17 +7,12 @@ import (
 )
 
 type artistsReponse struct {
-	Hooks   *base.Hooks
 	Success bool      `json:"success"`
 	Artists []*Artist `json:"artists"`
 }
 
 // download artists from YM.
 func (a *artistsReponse) Download() (response *artistsReponse, err error) {
-	if a.Hooks != nil && a.Hooks.OnFetchFromAPI != nil {
-		a.Hooks.OnFetchFromAPI(1, 1)
-	}
-
 	// prepare request.
 	var client = createRequestor(REFERER_PLAYLISTS)
 	response = &artistsReponse{}
@@ -43,7 +38,7 @@ func (a *artistsReponse) Download() (response *artistsReponse, err error) {
 
 // track artist.
 type Artist struct {
-	Hooks *base.Hooks
+	Hooks *base.Hooks[*base.Artist]
 	Name  string `json:"name"`
 }
 
@@ -54,8 +49,6 @@ type Artist struct {
 // You must make your songs public.
 func (a *Artist) DownloadAll() (artists []*base.Artist, err error) {
 	var arResp = &artistsReponse{}
-	arResp.Hooks = a.Hooks
-
 	response, err := arResp.Download()
 	if err != nil {
 		return
@@ -68,8 +61,8 @@ func (a *Artist) DownloadAll() (artists []*base.Artist, err error) {
 	// convert.
 	artists = make([]*base.Artist, 0)
 	for i := range response.Artists {
-		if a.Hooks != nil && a.Hooks.OnAddingToDatabase != nil {
-			a.Hooks.OnAddingToDatabase(i, len(response.Artists))
+		if a.Hooks != nil && a.Hooks.OnProcessing != nil {
+			a.Hooks.OnProcessing(i, len(response.Artists))
 		}
 		baseAr, errd := response.Artists[i].ToBase()
 		if errd != nil {
@@ -84,8 +77,8 @@ func (a *Artist) DownloadAll() (artists []*base.Artist, err error) {
 
 // get artists from DB.
 func (a *Artist) GetAll() (artists []*base.Artist, err error) {
-	if a.Hooks.OnFetchFromDatabase != nil {
-		a.Hooks.OnFetchFromDatabase(1, 1)
+	if a.Hooks != nil && a.Hooks.OnProcessing != nil {
+		a.Hooks.OnProcessing(1, 1)
 	}
 	var b = base.Artist{}
 	return b.GetAll(dbConn)

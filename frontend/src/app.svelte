@@ -54,14 +54,15 @@
     align-items: center;
     gap: 12px;
   }
+
   .main {
     height: 100%;
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    grid-template-rows: 1fr;
 
     .sidebar {
-      width: max-content;
-      width: 128px;
+      width: 148px;
     }
 
     .router {

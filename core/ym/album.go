@@ -8,7 +8,6 @@ import (
 )
 
 type albumsResponse struct {
-	Hooks     *base.Hooks
 	Success   bool     `json:"success"`
 	HasTracks bool     `json:"hasTracks"`
 	Albums    []*Album `json:"albums"`
@@ -16,10 +15,6 @@ type albumsResponse struct {
 
 // download albums.
 func (a *albumsResponse) Download() (response *albumsResponse, err error) {
-	if a.Hooks != nil && a.Hooks.OnFetchFromAPI != nil {
-		a.Hooks.OnFetchFromAPI(1, 1)
-	}
-
 	// prepare request.
 	var client = createRequestor(REFERER_ALBUMS)
 
@@ -45,7 +40,7 @@ func (a *albumsResponse) Download() (response *albumsResponse, err error) {
 
 // album.
 type Album struct {
-	Hooks *base.Hooks
+	Hooks *base.Hooks[*base.Album]
 
 	// album artists.
 	Artists []*Artist `json:"artists"`
@@ -67,10 +62,7 @@ type Album struct {
 }
 
 func (p *Album) DownloadAll() (albums []*base.Album, err error) {
-	var alResp = &albumsResponse{
-		Hooks: p.Hooks,
-	}
-
+	var alResp = &albumsResponse{}
 	response, err := alResp.Download()
 	if err != nil {
 		return
@@ -95,8 +87,8 @@ func (p *Album) DownloadAll() (albums []*base.Album, err error) {
 }
 
 func (p *Album) GetAll() (albums []*base.Album, err error) {
-	if p.Hooks.OnFetchFromDatabase != nil {
-		p.Hooks.OnFetchFromDatabase(1, 1)
+	if p.Hooks != nil && p.Hooks.OnProcessing != nil {
+		p.Hooks.OnProcessing(1, 1)
 	}
 	var b = base.Album{}
 	return b.GetAll(dbConn)

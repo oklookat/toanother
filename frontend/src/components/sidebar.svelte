@@ -3,7 +3,6 @@
 </script>
 
 <aside class="sidebar">
-    <Link path="/">Привет</Link>
     <Link path="/ym">Яндекс</Link>
     <Link path="/spotify">Спотифай</Link>
 </aside>

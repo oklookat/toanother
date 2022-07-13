@@ -13,7 +13,7 @@
 
     let notFoundsMsg: string[] = [];
 
-    async function importLikedTracks(from: "ym") {
+    async function importLikedTracks() {
         let notFound: base.Track[];
         notFoundsMsg = [];
         const unsub = args.subscribe((v) => {
@@ -47,7 +47,7 @@
         }
         if (!tracks || tracks.length < 1) {
             await MessageError(
-                "No liked tracks in YM. Maybe you need to fetch it?"
+                "В ЯМ нет треков. Может они не загружены?"
             );
             return;
         }
@@ -61,9 +61,9 @@
 <SpotifyView>
     <div class="content">
         <div class="yandex">
-            <h1>Из ЯМ</h1>
-            <Button on:click={async () => await importLikedTracks("ym")}
-                >Лайкнутые треки</Button
+            <div class="title">Яндекс.Музыка</div>
+            <Button on:click={async () => await importLikedTracks()}
+                >Любимые треки</Button
             >
             {#if notFoundsMsg && notFoundsMsg.length > 0}
                 <h2>Не найдены:</h2>
@@ -76,6 +76,9 @@
 </SpotifyView>
 
 <style lang="scss">
+    .title {
+        font-size: 2rem;
+    }
     .yandex {
         display: flex;
         flex-direction: column;

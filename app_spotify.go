@@ -11,30 +11,34 @@ import (
 )
 
 type SpotifyApp struct {
-	hooks     *spotify.Hooks
-	baseHooks *base.Hooks
-	ctx       context.Context
-	Client    *spotify.Instance
+	hooks      *spotify.Hooks
+	trackHooks *base.Hooks[*base.Track]
+	//
+	ctx    context.Context
+	Client *spotify.Instance
 }
 
 func (s *SpotifyApp) startup(ctx context.Context) (err error) {
 	s.ctx = ctx
 	s.hooks = &spotify.Hooks{
 		OnAuthURL: func(url string) {
-			runtime.EventsEmit(s.ctx, "SPOTIFY_AUTH_URL", url)
+			runtime.EventsEmit(s.ctx, EVENT_SPOTIFY_AUTH_URL, url)
 		},
 	}
-	s.baseHooks = &base.Hooks{
-		OnImport: func(current, total int, notFound []interface{}) {
-			runtime.EventsEmit(s.ctx, "OnImport", current, total, notFound)
+	s.trackHooks = &base.Hooks[*base.Track]{
+		OnProcessing: func(current, total int) {
+			runtime.EventsEmit(s.ctx, EVENT_PROCESSING, current, total)
+		},
+		OnNotFound: func(item *base.Track) {
+			runtime.EventsEmit(s.ctx, EVENT_NOT_FOUND, item)
 		},
 	}
-	s.Client, err = spotify.New(s.hooks, s.baseHooks)
+	s.Client, err = spotify.New(s.hooks)
 	return
 }
 
 func (s *SpotifyApp) onFinish() {
-	runtime.EventsEmit(s.ctx, "OnFinish")
+	runtime.EventsEmit(s.ctx, EVENT_FINISH)
 }
 
 func (s *SpotifyApp) GetSettings() *base.SpotifySettings {
@@ -63,7 +67,7 @@ func (s *SpotifyApp) Ping() (err error) {
 }
 
 func (s *SpotifyApp) ImportLikedTracks(tracks []*base.Track) (err error) {
-	if err = s.Client.ImportLikedTracks(tracks); err != nil {
+	if err = s.Client.ImportLikedTracks(tracks, s.trackHooks); err != nil {
 		logger.Log.Error(err.Error())
 	}
 	s.onFinish()

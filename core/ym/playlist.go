@@ -10,7 +10,6 @@ import (
 
 // playlists list with small information.
 type playlistsResponse struct {
-	Hooks       *base.Hooks
 	Success     bool  `json:"success"`
 	HasTracks   bool  `json:"hasTracks"`
 	PlaylistIds []int `json:"playlistIds"`
@@ -18,10 +17,6 @@ type playlistsResponse struct {
 
 // download playlists ID's.
 func (p *playlistsResponse) Download() (response *playlistsResponse, err error) {
-	if p.Hooks != nil && p.Hooks.OnFetchFromAPI != nil {
-		p.Hooks.OnFetchFromAPI(1, 1)
-	}
-
 	// prepare request.
 	var client = createRequestor(REFERER_PLAYLISTS)
 
@@ -48,7 +43,7 @@ func (p *playlistsResponse) Download() (response *playlistsResponse, err error) 
 }
 
 type Playlist struct {
-	Hooks *base.Hooks
+	Hooks *base.Hooks[*base.Playlist]
 	// id of playlist.
 	Kind       int      `json:"kind"`
 	Title      string   `json:"title"`
@@ -64,8 +59,6 @@ type Playlist struct {
 func (p *Playlist) DownloadAll() (playlists []*base.Playlist, err error) {
 	// download playlists id's.
 	var plResp = &playlistsResponse{}
-	plResp.Hooks = p.Hooks
-
 	response, err := plResp.Download()
 	if err != nil {
 		return
@@ -78,8 +71,8 @@ func (p *Playlist) DownloadAll() (playlists []*base.Playlist, err error) {
 	// convert playlists id's to playlist.
 	playlists = make([]*base.Playlist, 0)
 	for i, id := range response.PlaylistIds {
-		if p.Hooks != nil && p.Hooks.OnFetchFromAPI != nil {
-			p.Hooks.OnFetchFromAPI(i, len(response.PlaylistIds))
+		if p.Hooks != nil && p.Hooks.OnProcessing != nil {
+			p.Hooks.OnProcessing(i, len(response.PlaylistIds))
 		}
 		basePl, errd := p.Download(strconv.Itoa(id))
 		if errd != nil {
@@ -128,18 +121,12 @@ func (p *Playlist) Download(playlistID string) (playlist *base.Playlist, err err
 
 // get playlists from DB.
 func (p *Playlist) GetPlaylists() (playlists []*base.Playlist, err error) {
-	if p.Hooks.OnFetchFromDatabase != nil {
-		p.Hooks.OnFetchFromDatabase(1, 1)
-	}
 	var b = base.Playlist{}
 	return b.GetAll(dbConn)
 }
 
 // get playlist tracks from DB.
 func (p *Playlist) GetTracks(playlistID int64) (tracks []*base.Track, err error) {
-	if p.Hooks.OnFetchFromDatabase != nil {
-		p.Hooks.OnFetchFromDatabase(1, 1)
-	}
 	var b = base.Playlist{}
 	b.ID = playlistID
 	return b.GetTracks(dbConn)
@@ -158,8 +145,8 @@ func (p *Playlist) toBase() (basePlaylist *base.Playlist, err error) {
 
 	if p.Tracks != nil {
 		for i, track := range p.Tracks {
-			if p.Hooks != nil && p.Hooks.OnAddingToDatabase != nil {
-				p.Hooks.OnAddingToDatabase(i, len(p.Tracks))
+			if p.Hooks != nil && p.Hooks.OnProcessing != nil {
+				p.Hooks.OnProcessing(i, len(p.Tracks))
 			}
 			track.ToBase(basePlaylist.ID)
 		}

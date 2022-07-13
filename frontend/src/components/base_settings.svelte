@@ -27,7 +27,8 @@
         }
         footer {
             width: 100%;
-            background-color: red;
+            display: flex;
+            justify-content: flex-end;
         }
     }
 </style>

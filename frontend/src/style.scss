@@ -1,22 +1,20 @@
 :root {
+    color-scheme: light dark;
+
     @media (prefers-color-scheme: light) {
         --color-body: rgb(235, 235, 235);
         --color-text: #000;
-        --color-hover: rgb(211, 245, 255);
+        --color-hover: rgb(245, 245, 245);
         --color-border: rgba(160, 160, 160, 0.4);
-        --color-scrollbar: rgb(110, 110, 110);
-        --color-scrollbar-thumb: rgb(180, 180, 180);
         --color-level-1: #fff;
     }
 
     @media (prefers-color-scheme: dark) {
         --color-body: rgb(20, 20, 20);
         --color-text: #fff;
-        --color-hover: rgb(60, 60, 60);
+        --color-hover: rgb(40, 40, 40);
         --color-border: rgba(80, 80, 80, 0.4);
-        --color-scrollbar: rgb(60, 60, 60);
-        --color-scrollbar-thumb: rgb(90, 90, 90);
-        --color-level-1: rgb(40, 40, 40);
+        --color-level-1: rgb(30, 30, 30);
     }
 }
 
@@ -42,20 +40,6 @@ body {
     font-size: 1rem;
 }
 
-::-webkit-scrollbar {
-    background: var(--color-scrollbar);
-    height: 12px;
-    width: 12px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--color-scrollbar-thumb);
-
-    :hover {
-        background: var(--color-hover);
-    }
-}
-
 #app {
     height: 100%;
 }
@@ -67,7 +51,7 @@ a {
 
 input {
     outline: none;
-    min-height: 24px;
+    min-height: 42px;
 
     &::placeholder {
         font-weight: bold;

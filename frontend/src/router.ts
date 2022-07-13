@@ -1,4 +1,3 @@
-import Index from './routes/index.svelte'
 //
 import YandexMusic from './routes/ym/index.svelte'
 import YandexMusicSettings from './routes/ym/settings.svelte'
@@ -11,7 +10,6 @@ import SpotifySettings from './routes/spotify/settings.svelte'
 import SpotifyImport from './routes/spotify/import.svelte'
 
 const routes = {
-    '/': Index,
     //
     '/ym': YandexMusic,
     '/ym/settings': YandexMusicSettings,

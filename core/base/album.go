@@ -9,7 +9,7 @@ type Album struct {
 	ID     int64    `json:"id"`
 	Title  string   `json:"title"`
 	Artist []string `json:"artist"`
-	// unix time.
+	// unix timestamp (ms).
 	ReleaseDate int64 `json:"releaseDate"`
 	TrackCount  int   `json:"trackCount"`
 	Year        int   `json:"year"`
@@ -60,4 +60,8 @@ func (a *Album) GetAll(conn *sql.DB) (albums []*Album, err error) {
 		albums = append(albums, al)
 	}
 	return
+}
+
+func (a *Album) ToSearchable() (searchable string) {
+	return toSearchable(a.Artist, a.Title)
 }

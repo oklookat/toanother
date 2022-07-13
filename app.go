@@ -9,6 +9,13 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+const (
+	EVENT_SPOTIFY_AUTH_URL = "ON_SPOTIFY_AUTH_URL"
+	EVENT_NOT_FOUND        = "ON_NOT_FOUND"
+	EVENT_PROCESSING       = "ON_PROCESSING"
+	EVENT_FINISH           = "ON_FINISH"
+)
+
 type otherApp interface {
 	startup(ctx context.Context) (err error)
 }
@@ -34,6 +41,7 @@ func (a *App) run() (err error) {
 		Assets:    assets,
 		OnStartup: a.startup,
 		Bind:      binds,
+		Logger:    logger.Log,
 	})
 
 	return

@@ -3,7 +3,6 @@ package base
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 )
 
 type Track struct {
@@ -37,19 +36,5 @@ func (t *Track) AddToTable(conn *sql.DB) (id int64, err error) {
 
 // convert track title to searchable string.
 func (t *Track) ToSearchable() (searchable string) {
-	if len(t.Artist) < 1 {
-		return
-	}
-
-	// modify artist.
-	var artistStr = t.Artist[0]
-	artistStr = REGEXP_SYMBOLS.ReplaceAllString(artistStr, "")
-
-	// modify title.
-	var title = t.Title
-	title = REGEXP_BRACKETS.ReplaceAllString(title, "")
-	title = REGEXP_SYMBOLS.ReplaceAllString(title, "")
-
-	searchable = fmt.Sprintf("%v %v", artistStr, title)
-	return
+	return toSearchable(t.Artist, t.Title)
 }

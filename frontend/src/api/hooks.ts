@@ -2,65 +2,39 @@ import { EventsOff, EventsOn, openInBrowser } from ".";
 import type { base } from "../../wailsjs/go/models";
 import { active, args, sign } from "../utils/store";
 
-const events = [
-    "OnFetchFromAPI",
-    "OnFetchFromDatabase",
-    "OnAddingToDatabase",
-    "OnFinish",
-    "SPOTIFY_AUTH_URL",
-    "OnImport"
-]
+enum EVENT {
+    SPOTIFY_AUTH_URL = "ON_SPOTIFY_AUTH_URL",
+	NOT_FOUND     = "ON_NOT_FOUND",
+	PROCESSING    = "ON_PROCESSING",
+	FINISH        = "ON_FINISH",
+}
 
 export class Hooks {
 
     public static Init() {
-        EventsOn(events[0], (current: number, total: number) => {
+        EventsOn(EVENT.PROCESSING, (current: number, total: number) => {
             active.set(true)
+            const percents = Math.round((current/total) * 100)
             sign.set(`
-            <div>загрузка с API...</div>
-            <div>${current}/${total}</div>
+            <div>ждём...</div>
+            <div>${percents}%</div>
             `)
             args.set([current, total])
         });
-        EventsOn(events[1], (current: number, total: number) => {
-            active.set(true)
-            sign.set(`
-            <div>получение из БД...</div> 
-            <div>${current}/${total}</div> 
-            `)
-            args.set([current, total])
-        });
-        EventsOn(events[2], (current: number, total: number) => {
-            active.set(true)
-            sign.set(`
-            <div>добавление в БД...</div> 
-            <div>${current}/${total}</div> 
-            `)
-            args.set([current, total])
-        });
-        EventsOn(events[3], () => {
+        EventsOn(EVENT.FINISH, () => {
             active.set(false)
         });
-        EventsOn(events[4], (url: string) => {
+        EventsOn(EVENT.SPOTIFY_AUTH_URL, (url: string) => {
             openInBrowser(url)
-        })
-        EventsOn(events[5], (current: number, total: number, notFound: any[]) => {
-            active.set(true)
-            args.set([current, total, notFound])
-            sign.set(`
-            <div>импорт...</div>
-            <div>сейчас: ${current}</div>
-            <div>всего: ${total}</div>
-            <div>нет: ${notFound.length}</div>
-            `)
         })
     }
 
     public static Destroy() {
         active.set(false)
-        for (const event of events) {
-            EventsOff(event)
-        }
+        Object.keys(EVENT).map(key => {
+            const evt = EVENT[key]
+            EventsOff(evt)
+        })
     }
 
 }
