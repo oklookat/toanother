@@ -63,5 +63,5 @@ func (a *Album) GetAll(conn *sql.DB) (albums []*Album, err error) {
 }
 
 func (a *Album) ToSearchable() (searchable string) {
-	return toSearchable(a.Artist, a.Title)
+	return toSearchable(a.Artist, a.Title, false)
 }

@@ -4,76 +4,153 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 
+	"github.com/oklookat/toanother/core/base"
 	"github.com/oklookat/toanother/core/datadir"
-	"github.com/oklookat/toanother/core/logger"
 	"github.com/zmb3/spotify/v2"
+	spotifyauth "github.com/zmb3/spotify/v2/auth"
 	"golang.org/x/oauth2"
 )
 
-// auth.
-func (i *Instance) WebAuth() (err error) {
-	var httpErr = make(chan error, 1)
-	if !i.isWebAuthCalledBefore {
-		http.HandleFunc(spotifyURI, func(w http.ResponseWriter, r *http.Request) {
-			var errd error
-			i.token, errd = i.authenticator.Token(r.Context(), i.state, r)
+const (
+	AUTH_STATE         = "1234"
+	AUTH_CALLBACK_PATH = "spotify/callback"
+	AUTH_REDIRECT_URL  = "http://localhost:8080/" + AUTH_CALLBACK_PATH
+)
 
-			if errd != nil {
-				http.Error(w, "couldn't get token", http.StatusForbidden)
-				httpErr <- errd
-				return
-			}
+type authHandler struct {
+	initialized   bool
+	authenticator *spotifyauth.Authenticator
+	HttpErr       chan error
+	Token         *oauth2.Token
+}
 
-			if st := r.FormValue("state"); st != i.state {
-				var errStr = fmt.Sprintf("state mismatch: %s != %s\n", st, i.state)
-				http.Error(w, errStr, 400)
-				httpErr <- errors.New(errStr)
-				return
-			}
+func (a *authHandler) New(au *spotifyauth.Authenticator) {
+	a.authenticator = au
+	a.HttpErr = make(chan error)
+	a.initialized = true
+}
 
-			// use the token to get an authenticated client
-			errd = i.authByToken(r.Context())
-
-			httpErr <- errd
-		})
-
-		go func() {
-			if err = http.ListenAndServe(":8080", nil); err != nil {
-				logger.Log.Fatal(err.Error())
-			}
-		}()
-
-		i.isWebAuthCalledBefore = true
+func (a *authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !a.initialized {
+		http.Error(w, "authHandler not initialized", 500)
+		return
 	}
 
-	var url = i.authenticator.AuthURL(i.state)
-	if i.hooks != nil && i.hooks.OnAuthURL != nil {
-		i.hooks.OnAuthURL(url)
+	if r.URL.Path != AUTH_CALLBACK_PATH {
+		w.WriteHeader(200)
+		return
+	}
+
+	var token, err = a.authenticator.Token(r.Context(), AUTH_STATE, r)
+
+	if err != nil {
+		http.Error(w, "couldn't get token", http.StatusForbidden)
+		a.HttpErr <- err
+		return
+	}
+
+	if st := r.FormValue("state"); st != AUTH_STATE {
+		var errStr = fmt.Sprintf("state mismatch: %s != %s\n", st, AUTH_STATE)
+		http.Error(w, errStr, 400)
+		a.HttpErr <- errors.New(errStr)
+		return
+	}
+
+	a.Token = token
+	a.HttpErr <- err
+}
+
+type auth struct {
+	Client        *spotify.Client
+	User          *spotify.PrivateUser
+	token         *oauth2.Token
+	authenticator *spotifyauth.Authenticator
+}
+
+// Check auth.
+func (a *auth) Ping() (err error) {
+	if a.Client == nil || a.token == nil {
+		err = errors.New("not authorized")
+		return
+	}
+	usr, err := a.Client.CurrentUser(context.Background())
+	if err != nil {
+		return
+	}
+	if len(usr.ID) < 1 {
+		err = errors.New("empty user ID")
+	}
+	return
+}
+
+// Get token by web & make auth.
+//
+// onURL: when we get URL to auth in app.
+func (a *auth) Web(onURL func(url string)) (err error) {
+	if a.authenticator == nil {
+		a.initAuthenticator()
+	}
+
+	var handler = &authHandler{}
+	handler.New(a.authenticator)
+
+	var server = http.Server{
+		Addr:    ":8080",
+		Handler: handler,
+	}
+	defer server.Close()
+
+	listener, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		return
+	}
+	defer listener.Close()
+
+	go func() {
+		_ = server.Serve(listener)
+	}()
+
+	var url = a.authenticator.AuthURL(AUTH_STATE)
+	if onURL != nil {
+		go onURL(url)
 	}
 
 	// wait error handler (auth complete).
-	if err = <-httpErr; err != nil {
-		return err
+	if err = <-handler.HttpErr; err != nil {
+		return
 	}
 
-	if err = i.WriteToken(i.token); err != nil {
+	// set.
+	if err = a.setToken(handler.Token); err != nil {
+		return
+	}
+
+	// auth.
+	if err = a.ByToken(context.Background()); err != nil {
 		return
 	}
 
 	return
 }
 
-func (i *Instance) authByToken(ctx context.Context) (err error) {
-	i.client = spotify.New(i.authenticator.Client(ctx, i.token))
-	// use the client to make calls that require authorization
-	i.user, err = i.client.CurrentUser(context.Background())
+// Create client by a.token.
+func (a *auth) ByToken(ctx context.Context) (err error) {
+	if a.token == nil {
+		if ok, errd := a.readTokenFromFile(); !ok || errd != nil {
+			return
+		}
+	}
+	a.initAuthenticator()
+	a.Client = spotify.New(a.authenticator.Client(ctx, a.token))
+	a.User, err = a.Client.CurrentUser(context.Background())
 	return
 }
 
-// read token from json.
-func (i *Instance) readToken() (err error) {
+// Set a.token from file.
+func (a *auth) readTokenFromFile() (ok bool, err error) {
 	isExists, err := datadir.IsFileExists(TOKEN_DIR)
 	if err != nil {
 		return
@@ -81,31 +158,40 @@ func (i *Instance) readToken() (err error) {
 	if !isExists {
 		return
 	}
-	i.token = &oauth2.Token{}
-	err = datadir.GetStructByFile(TOKEN_DIR, false, i.token)
+	a.token = &oauth2.Token{}
+	if err = datadir.GetStructByFile(TOKEN_DIR, false, a.token); err != nil {
+		return
+	}
+	ok = true
+	a.initAuthenticator()
 	return
 }
 
-// write token to json.
-func (i *Instance) WriteToken(token *oauth2.Token) (err error) {
+// Set a.token & set to file.
+func (a *auth) setToken(token *oauth2.Token) (err error) {
 	if token == nil {
 		err = errors.New("nil token")
 		return
 	}
-	return datadir.WriteFileStruct(TOKEN_DIR, false, token)
+	a.token = token
+	a.initAuthenticator()
+	return datadir.WriteFileStruct(TOKEN_DIR, false, a.token)
 }
 
-func (i *Instance) Ping() (err error) {
-	if i.client == nil || i.token == nil {
-		err = errors.New("spotify: not authorized")
-		return
-	}
-	usr, err := i.client.CurrentUser(context.Background())
-	if err != nil {
-		return
-	}
-	if len(usr.ID) < 1 {
-		err = errors.New("spotify: ping failed")
-	}
-	return
+// Re(init) app authenticator.
+func (a *auth) initAuthenticator() {
+	a.authenticator = spotifyauth.New(
+		spotifyauth.WithClientID(base.ConfigFile.Spotify.ID),
+		spotifyauth.WithClientSecret(base.ConfigFile.Spotify.Secret),
+		spotifyauth.WithRedirectURL(AUTH_REDIRECT_URL),
+		spotifyauth.WithScopes(
+			spotifyauth.ScopeUserLibraryRead,
+			spotifyauth.ScopeUserLibraryModify,
+			spotifyauth.ScopeUserFollowRead,
+			spotifyauth.ScopeUserFollowModify,
+			spotifyauth.ScopePlaylistReadPrivate,
+			spotifyauth.ScopePlaylistModifyPrivate,
+			spotifyauth.ScopeUserReadPrivate,
+		),
+	)
 }

@@ -4,77 +4,50 @@ import (
 	"errors"
 
 	"github.com/oklookat/toanother/core/base"
+	"github.com/oklookat/toanother/core/utils"
 	"github.com/zmb3/spotify/v2"
 )
 
-type idFinderAllowed interface {
-	*base.Track | *base.Artist | *base.Album
-}
-
 // ID finding methods.
-type idFinder[T idFinderAllowed] interface {
+type idFinder[T base.Entities] interface {
+	// find id by this method.
 	Find(val T) (found bool, id spotify.ID, err error)
-
-	OnFinish(ids [][]spotify.ID) (err error)
 }
 
-type findIdsArgs[T idFinderAllowed] struct {
-	instance *Instance
-	vals     []T
-	finder   idFinder[T]
-	hooks    *base.Hooks[T]
-}
-
-// Find Spotify ID's by args.
-func findIds[T idFinderAllowed](args *findIdsArgs[T]) (err error) {
-	if args == nil {
-		err = errors.New("nil args")
-		return
-	}
-	if args.instance == nil {
-		err = errors.New("nil instance")
-		return
-	}
-	if err = args.instance.Ping(); err != nil {
-		return
-	}
-	if args.finder == nil {
-		err = errors.New("nil finder")
-		return
-	}
-	if args.vals == nil {
+func findIds[T base.Entities](vals []T, finder idFinder[T], onProcessing func(current int, total int)) (sIds [][]spotify.ID, err error) {
+	if vals == nil {
 		err = errors.New("nil vals")
 		return
 	}
+	if finder == nil {
+		err = errors.New("nil finder")
+		return
+	}
 
-	var ids = make([][]spotify.ID, 0)
-	ids = append(ids, make([]spotify.ID, 0))
-	var delimIndex = 0
-	//
-	var total = len(args.vals)
+	var ids = make([]spotify.ID, 0)
+	var total = len(vals)
 
-	for counter, val := range args.vals {
-		if args.hooks != nil && args.hooks.OnProcessing != nil {
-			args.hooks.OnProcessing(counter, total)
+	for counter, val := range vals {
+		if val == nil {
+			continue
 		}
-		found, foundID, errd := args.finder.Find(val)
+		if onProcessing != nil {
+			onProcessing(counter, total)
+		}
+
+		found, foundID, errd := finder.Find(val)
 		if errd != nil {
 			err = errd
 			return
 		}
 		if !found {
-			if args.hooks != nil && args.hooks.OnNotFound != nil {
-				args.hooks.OnNotFound(val)
-			}
 			continue
 		}
-		// limit: 50 id's per API call.
-		if counter%20 == 0 && len(ids[delimIndex]) > 19 {
-			ids = append(ids, make([]spotify.ID, 0))
-			delimIndex++
-		}
-		ids[delimIndex] = append(ids[delimIndex], foundID)
+
+		ids = append(ids, foundID)
 	}
 
-	return args.finder.OnFinish(ids)
+	// split because spotify have limit API calls.
+	sIds = utils.SplitSlice(ids, 20)
+	return
 }

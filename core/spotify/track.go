@@ -10,26 +10,40 @@ import (
 )
 
 type track struct {
-	instance *Instance
+	Searcher     searcher
+	Adder        trackAdder
+	OnProcessing func(current, total int)
+	OnNotFound   func(item *base.Track)
 }
 
+// Find track id by base Track.
 func (t *track) Find(track *base.Track) (found bool, id spotify.ID, err error) {
-	if t.instance == nil {
-		err = errors.New("nil instance")
+	if t.Searcher == nil {
+		err = errors.New("nil searcher")
 		return
 	}
 	if track == nil {
 		err = errors.New("nil track")
 		return
 	}
-	result, err := t.instance.client.Search(context.Background(),
+
+	defer func() {
+		if err != nil || found || t.OnNotFound == nil {
+			return
+		}
+		t.OnNotFound(track)
+	}()
+
+	result, err := t.Searcher.Search(context.Background(),
 		track.ToSearchable(), spotify.SearchTypeTrack)
 	if err != nil {
 		return
 	}
+
 	if result == nil || result.Tracks == nil || result.Tracks.Tracks == nil || result.Tracks.Total < 1 {
 		return
 	}
+
 	for _, ft := range result.Tracks.Tracks {
 		var foundDur = ft.Duration
 		var trackDur = track.DurationMs
@@ -45,17 +59,27 @@ func (t *track) Find(track *base.Track) (found bool, id spotify.ID, err error) {
 	return
 }
 
-func (t *track) OnFinish(ids [][]spotify.ID) (err error) {
-	if t.instance == nil {
-		err = errors.New("nil instance")
+// Add (like) tracks.
+func (t *track) AddToLibrary(tracks []*base.Track) (err error) {
+	if t.Adder == nil {
+		err = errors.New("nil adder")
 		return
 	}
-	// TODO: uncomment
-	// for counter := range ids {
-	// 	err = t.instance.client.AddTracksToLibrary(context.Background(), ids[counter]...)
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// }
+	if tracks == nil {
+		err = errors.New("nil tracks")
+		return
+	}
+
+	ids, err := findIds[*base.Track](tracks, t, t.OnProcessing)
+	if err != nil {
+		return
+	}
+
+	for counter := range ids {
+		err = t.Adder.AddTracksToLibrary(context.Background(), ids[counter]...)
+		if err != nil {
+			return
+		}
+	}
 	return
 }

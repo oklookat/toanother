@@ -9,19 +9,56 @@ import (
 )
 
 type artist struct {
-	instance *Instance
+	Searcher     searcher
+	Follower     artistFollower
+	OnProcessing func(current, total int)
+	OnNotFound   func(item *base.Artist)
 }
 
+// Follow.
+func (a *artist) Follow(artists []*base.Artist) (err error) {
+	if a.Follower == nil {
+		err = errors.New("nil follower")
+		return
+	}
+	if artists == nil {
+		err = errors.New("nil artists")
+		return
+	}
+
+	ids, err := findIds[*base.Artist](artists, a, a.OnProcessing)
+	if err != nil {
+		return
+	}
+
+	for counter := range ids {
+		err = a.Follower.FollowArtist(context.Background(), ids[counter]...)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+// Find artist by base Artist.
 func (a *artist) Find(artist *base.Artist) (found bool, id spotify.ID, err error) {
-	if a.instance == nil {
-		err = errors.New("nil instance")
+	if a.Searcher == nil {
+		err = errors.New("nil searcher")
 		return
 	}
 	if artist == nil {
 		err = errors.New("nil artist")
 		return
 	}
-	result, errd := a.instance.client.Search(context.Background(),
+
+	defer func() {
+		if err != nil || found || a.OnNotFound == nil {
+			return
+		}
+		a.OnNotFound(artist)
+	}()
+
+	result, errd := a.Searcher.Search(context.Background(),
 		artist.Name, spotify.SearchTypeArtist)
 	if errd != nil {
 		return
@@ -33,20 +70,6 @@ func (a *artist) Find(artist *base.Artist) (found bool, id spotify.ID, err error
 		found = true
 		id = result.Artists.Artists[i].ID
 		break
-	}
-	return
-}
-
-func (a *artist) OnFinish(ids [][]spotify.ID) (err error) {
-	if a.instance == nil {
-		err = errors.New("nil instance")
-		return
-	}
-	for counter := range ids {
-		err = a.instance.client.FollowArtist(context.Background(), ids[counter]...)
-		if err != nil {
-			return
-		}
 	}
 	return
 }

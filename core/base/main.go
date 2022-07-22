@@ -53,10 +53,13 @@ const (
 	`
 )
 
-type Hooks[T comparable] struct {
+type Entities interface {
+	*Track | *Artist | *Album | *Playlist
+}
+
+type Hooks[T Entities] struct {
 	OnProcessing func(current int, total int)
-	// on something not found.
-	OnNotFound func(item T)
+	OnNotFound   func(item T)
 }
 
 // Recreate all tables.
@@ -69,7 +72,7 @@ func RecreateAll(conn *sql.DB) (err error) {
 }
 
 // Convert artist & title to searchable string.
-func toSearchable(artist []string, title string) (searchable string) {
+func toSearchable(artist []string, title string, modifyTitle bool) (searchable string) {
 	if artist == nil || len(artist) < 1 {
 		return
 	}
@@ -79,8 +82,10 @@ func toSearchable(artist []string, title string) (searchable string) {
 	artistStr = REGEXP_SYMBOLS.ReplaceAllString(artistStr, "")
 
 	// modify title.
-	title = REGEXP_BRACKETS.ReplaceAllString(title, "")
-	title = REGEXP_SYMBOLS.ReplaceAllString(title, "")
+	if modifyTitle {
+		title = REGEXP_BRACKETS.ReplaceAllString(title, "")
+		title = REGEXP_SYMBOLS.ReplaceAllString(title, "")
+	}
 
 	searchable = fmt.Sprintf("%v %v", artistStr, title)
 	return

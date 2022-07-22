@@ -36,5 +36,5 @@ func (t *Track) AddToTable(conn *sql.DB) (id int64, err error) {
 
 // convert track title to searchable string.
 func (t *Track) ToSearchable() (searchable string) {
-	return toSearchable(t.Artist, t.Title)
+	return toSearchable(t.Artist, t.Title, true)
 }

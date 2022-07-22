@@ -2,98 +2,98 @@ package spotify
 
 import (
 	"context"
+	"errors"
 
 	"github.com/oklookat/toanother/core/base"
-	"github.com/zmb3/spotify/v2"
-	spotifyauth "github.com/zmb3/spotify/v2/auth"
-	"golang.org/x/oauth2"
 )
 
-// TODO:
-// сделать возможность отмены импорта треков(?).
-
 const (
-	// dirs.
 	WORKDIR   = "."
 	TOKEN_DIR = WORKDIR + "/spotify_token.json"
-
-	// server.
-	spotifyURI = "/spotify/callback"
-	serverURI  = "http://localhost:8080" + spotifyURI
 )
 
 type Hooks struct {
-	// open URL in args to auth.
-	OnAuthURL func(url string)
+	OnURL  func(url string)
+	Album  *base.Hooks[*base.Album]
+	Artist *base.Hooks[*base.Artist]
+	Track  *base.Hooks[*base.Track]
 }
 
 type Instance struct {
-	hooks *Hooks
-	// auth.
-	isWebAuthCalledBefore bool
-	state                 string
-	token                 *oauth2.Token
-	authenticator         *spotifyauth.Authenticator
-	// main.
-	client *spotify.Client
-	user   *spotify.PrivateUser
+	hooks  *Hooks
+	auth   *auth
+	album  *album
+	artist *artist
+	track  *track
 }
 
-func New(h *Hooks) (inst *Instance, err error) {
-	inst = &Instance{}
-	inst.hooks = h
-	inst.InitAuthenticator()
-	inst.state = "abc123"
-	if err = inst.readToken(); err != nil {
+func New(h *Hooks) (i *Instance, err error) {
+	i = &Instance{}
+	i.hooks = h
+	i.auth = &auth{}
+
+	if err = i.auth.ByToken(context.Background()); err != nil {
 		return
 	}
-	if inst.token != nil {
-		if err = inst.authByToken(context.Background()); err != nil {
-			return
-		}
+
+	i.album = &album{
+		Searcher:     i.auth.Client,
+		Adder:        i.auth.Client,
+		Currenter:    i.auth.Client,
+		Remover:      i.auth.Client,
+		OnProcessing: h.Album.OnProcessing,
+		OnNotFound:   h.Album.OnNotFound,
+	}
+	i.artist = &artist{
+		Searcher:     i.auth.Client,
+		Follower:     i.auth.Client,
+		OnProcessing: h.Artist.OnProcessing,
+		OnNotFound:   h.Artist.OnNotFound,
+	}
+	i.track = &track{
+		Searcher:     i.auth.Client,
+		Adder:        i.auth.Client,
+		OnProcessing: h.Track.OnProcessing,
+		OnNotFound:   h.Track.OnNotFound,
+	}
+
+	return
+}
+
+func (i *Instance) ApplySettings(settings *base.SpotifySettings) (err error) {
+	if settings == nil {
+		err = errors.New("nil settings")
+		return
+	}
+	if err = settings.Apply(); err != nil {
+		return
+	}
+	if err = i.auth.ByToken(context.Background()); err != nil {
+		return
 	}
 	return
 }
 
-func (i *Instance) InitAuthenticator() {
-	i.authenticator = spotifyauth.New(
-		spotifyauth.WithClientID(base.ConfigFile.Spotify.ID),
-		spotifyauth.WithClientSecret(base.ConfigFile.Spotify.Secret),
-		spotifyauth.WithRedirectURL(serverURI),
-		spotifyauth.WithScopes(
-			spotifyauth.ScopeUserLibraryRead,
-			spotifyauth.ScopeUserLibraryModify,
-			spotifyauth.ScopeUserFollowRead,
-			spotifyauth.ScopeUserFollowModify,
-			spotifyauth.ScopePlaylistReadPrivate,
-			spotifyauth.ScopePlaylistModifyPrivate,
-			spotifyauth.ScopeUserReadPrivate,
-		),
-	)
+func (i *Instance) WebAuth() (err error) {
+	return i.auth.Web(i.hooks.OnURL)
 }
 
-func (i *Instance) ImportLikedTracks(tracks []*base.Track, hooks *base.Hooks[*base.Track]) (err error) {
-	var tr = &track{
-		instance: i,
-	}
-	var args = &findIdsArgs[*base.Track]{
-		instance: i,
-		vals:     tracks,
-		finder:   tr,
-		hooks:    hooks,
-	}
-	return findIds(args)
+func (i *Instance) Ping() (err error) {
+	return i.auth.Ping()
 }
 
-func (i *Instance) ImportLikedArtists(artists []*base.Artist, hooks *base.Hooks[*base.Artist]) (err error) {
-	var ar = &artist{
-		instance: i,
-	}
-	var args = &findIdsArgs[*base.Artist]{
-		instance: i,
-		vals:     artists,
-		finder:   ar,
-		hooks:    hooks,
-	}
-	return findIds(args)
+func (i *Instance) AddTracks(tracks []*base.Track) (err error) {
+	return i.track.AddToLibrary(tracks)
+}
+
+func (i *Instance) FollowAlbums(albums []*base.Album) (err error) {
+	return i.album.Follow(albums)
+}
+
+func (i *Instance) FollowArtists(artists []*base.Artist) (err error) {
+	return i.artist.Follow(artists)
+}
+
+func (i *Instance) UnfollowAllAlbums() (err error) {
+	return i.album.UnfollowAll()
 }
