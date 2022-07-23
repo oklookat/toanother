@@ -1,12 +1,14 @@
 package base
 
 import (
+	"errors"
+
 	"github.com/oklookat/toanother/core/datadir"
 )
 
 const CONFIG_NAME = "./config.yml"
 
-var ConfigFile *Config
+var ConfigFile = &Config{}
 
 type Config struct {
 	YandexMusic YandexMusicSettings `json:"YandexMusic" yaml:"YandexMusic"`
@@ -45,11 +47,12 @@ type YandexMusicSettings struct {
 
 // write to config file.
 func (c *YandexMusicSettings) Apply() (err error) {
-	ConfigFile.YandexMusic = *c
-	if err = ConfigFile.WriteToFile(); err != nil {
+	if ConfigFile == nil {
+		err = errors.New("config not initialized")
 		return
 	}
-	return
+	ConfigFile.YandexMusic = *c
+	return ConfigFile.WriteToFile()
 }
 
 type SpotifySettings struct {
@@ -59,9 +62,10 @@ type SpotifySettings struct {
 
 // write to config file.
 func (c *SpotifySettings) Apply() (err error) {
-	ConfigFile.Spotify = *c
-	if err = ConfigFile.WriteToFile(); err != nil {
+	if ConfigFile == nil {
+		err = errors.New("config not initialized")
 		return
 	}
-	return
+	ConfigFile.Spotify = *c
+	return ConfigFile.WriteToFile()
 }

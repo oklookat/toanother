@@ -16,8 +16,7 @@ func main() {
 	}
 
 	// config.
-	var config = &base.Config{}
-	if err = config.Init(); err != nil {
+	if err = base.ConfigFile.Init(); err != nil {
 		panic("[config] " + err.Error())
 	}
 
@@ -27,5 +26,6 @@ func main() {
 	}
 
 	// ui.
+	var ui = ui.Instance{}
 	ui.Start()
 }
